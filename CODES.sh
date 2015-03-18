@@ -211,7 +211,7 @@ installDistroDependencies ()
         sudo apt-get update
         sudo apt-get -y install ruby-dev zlib1g-dev rubygems1.9.1 libxml2-dev libxslt1-dev libsqlite3-dev \
             libhttpclient-ruby imagemagick libxmlsec1-dev python-software-properties postgresql \
-            postgresql-contrib libpq-dev libpqxx-dev ruby-pg build-essential
+            postgresql-contrib libpq-dev libpqxx-dev ruby-pg build-essential software-properties-common
     elif runningArch; then
         sudo pacman -S --needed --noconfirm lsb-release curl libxslt python2
     elif runningMint; then
@@ -227,6 +227,9 @@ installDistroDependencies ()
 setLocale ()
 {
     green "Setting locale\n"
+
+    export LANG="en_US.UTF-8"
+    export LC_ALL="en_US.UTF-8"
 
     if runningArch && ! $(locale | grep "LANG=en_US.UTF-8" >/dev/null 2>&1); then
         cyan "Your locale is not currently set to en_US.UTF-8.\n"
@@ -719,6 +722,15 @@ cloneCanvas ()
     fi
 
     git clone "$CLONE_URL" "$checkoutname"
+
+    cat > Gemfile.tmp <<- EOM
+if RUBY_VERSION =~ /1.9/
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
+end
+EOM
+    cat "$checkoutname"/Gemfile >> Gemfile.tmp
+    mv Gemfile.tmp "$checkoutname"/Gemfile
 }
 
 installNpmPackages ()
@@ -930,7 +942,7 @@ installBundler ()
 
     # Install the latest version possible and set BUNDLE_VER
     # Try to read the bundler version straight from the gem file
-    [ -f Gemfile.d/_before.rb ] && \
+    [ -z "$BUNDLE_VER" && -f Gemfile.d/_before.rb ] && \
     BUNDLE_VER=$(ruby -e "$(cat Gemfile.d/_before.rb | grep required_bundler_version | head -1); puts \"#{required_bundler_version.last}\"")
 
     if [ -n "$BUNDLE_VER" ]; then
